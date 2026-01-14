@@ -65,106 +65,64 @@ class DataStorage:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-    def save_matches(self, matches: List[Dict], source: str = 'unknown'):
-        """Salva una lista di partite nel database con gestione robusta dei tipi."""
+    def save_match_data(self, matches: List[Dict]):
+        """Salva i dati delle partite nel database"""
         if not matches:
-            logger.warning("Nessuna partita da salvare.")
             return
-        
-        conn = sqlite3.connect(self.db_path)
+
+        conn = self._get_connection()
         cursor = conn.cursor()
-        
-        saved_count = 0
-        error_count = 0
-        
-        for match in matches:
-            try:
-                # Usa l'ID della partita se esiste, altrimenti generane uno
-                match_id = match.get('match_id', self._generate_match_id(match))
-                
-                # --- CONVERSIONE DATI CRITICA ---
-                # 1. Gestione data: converti Timestamp in stringa ISO
-                date_value = match.get('date')
-                if date_value is not None:
-                    # Se è un pandas Timestamp, converti in stringa
-                    if hasattr(date_value, 'isoformat'):
-                        date_str = date_value.isoformat(sep=' ', timespec='seconds')
-                    elif isinstance(date_value, str):
-                        date_str = date_value
-                    else:
-                        # Prova conversione generica
-                        date_str = str(date_value)
-                else:
-                    # Data mancante: usa un valore di default o salta
-                    logger.warning(f"Match {match_id} senza data. Uso '1900-01-01'.")
-                    date_str = '1900-01-01 00:00:00'
-                
-                # 2. Converti xG a float (se sono stringhe)
-                home_xg = match.get('home_xg')
-                away_xg = match.get('away_xg')
-                
-                if home_xg is not None:
-                    try:
-                        home_xg = float(home_xg)
-                    except (ValueError, TypeError):
-                        home_xg = 0.0
-                
-                if away_xg is not None:
-                    try:
-                        away_xg = float(away_xg)
-                    except (ValueError, TypeError):
-                        away_xg = 0.0
-                
-                # 3. Converti punteggi a int
-                home_score = match.get('home_score')
-                away_score = match.get('away_score')
-                
-                if home_score is not None:
-                    try:
-                        home_score = int(home_score)
-                    except (ValueError, TypeError):
-                        home_score = None
-                
-                if away_score is not None:
-                    try:
-                        away_score = int(away_score)
-                    except (ValueError, TypeError):
-                        away_score = None
-                
-                # 4. Esegui l'inserimento con dati convertiti
-                cursor.execute('''
-                    INSERT OR REPLACE INTO matches 
-                    (match_id, date, home_team, away_team, home_score, away_score, 
-                     home_xg, away_xg, competition, season, source, raw_data)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    match_id,
-                    date_str,  # Ora è una stringa
-                    match.get('home_team'),
-                    match.get('away_team'),
-                    home_score,
-                    away_score,
-                    home_xg,
-                    away_xg,
-                    match.get('competition'),
-                    match.get('season'),
-                    source,
-                    json.dumps(match, default=str)
-                ))
-                
-                saved_count += 1
+
+        try:
+            for match in matches:
+                try:
+                    # --- MODIFICA: Aggiungi questo controllo ---
+                    # Salta la partita se mancano i nomi delle squadre
+                    if not match.get('home_team') or not match.get('away_team'):
+                        print(f"⚠️ Match ignorato: dati incompleti (home o away mancanti)")
+                        continue
+                    # -------------------------------------------
+
+                    # Verifica data (codice esistente)
+                    match_date = match.get('date')
+                    if not match_date:
+                        print(f"Match {match.get('home_team', '')}_{match.get('away_team', '')} senza data. Uso '1900-01-01'.")
+                        match_date = '1900-01-01'
                     
-            except Exception as e:
-                error_count += 1
-                # Log dettagliato per debug
-                logger.error(f"Errore salvataggio match {match_id}: {e}")
-                logger.debug(f"Dati problematici: {match}")
-                continue
-        
-        conn.commit()
-        conn.close()
-        
-        logger.info(f"Salvataggio completato: {saved_count} salvate, {error_count} errori")
+                    # ... resto del codice (cursor.execute, etc.) ...
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO matches (
+                            date, home_team, away_team, 
+                            home_score, away_score, 
+                            competition, season,
+                            home_xg, away_xg,
+                            home_odds, draw_odds, away_odds
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        match_date,
+                        match.get('home_team'),
+                        match.get('away_team'),
+                        match.get('home_score'),
+                        match.get('away_score'),
+                        match.get('competition'),
+                        match.get('season'),
+                        match.get('home_xg'),
+                        match.get('away_xg'),
+                        match.get('home_odds'),
+                        match.get('draw_odds'),
+                        match.get('away_odds')
+                    ))
+                except Exception as e:
+                    print(f"Errore salvataggio match {match.get('home_team', '')}_{match.get('away_team', '')}: {str(e)}")
+            
+            conn.commit()
+            print("✅ Salvataggio completato.") # Opzionale: conferma visiva
+            
+        except Exception as e:
+            print(f"Errore durante il salvataggio nel DB: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
     
     def _generate_match_id(self, match: Dict) -> str:
         """Genera un ID unico per la partita."""

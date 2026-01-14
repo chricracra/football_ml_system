@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 # --- IMPORTAZIONI OBBLIGATORIE ---
 from src.data_collection.football_data import FootballDataCollector
 from src.data_collection.understat import UnderstatCollector
-from src.data_collection.data_merger import DataMerger  
+from src.data_collection.data_merger import DataMerger  # <-- QUESTA È ESSENZIALE
 from src.data_collection.data_storage import DataStorage
 from config.settings import COMPETITIONS, DATA_DIR
 
