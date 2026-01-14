@@ -1,0 +1,37 @@
+{
+  "competitions": [
+    {
+      "name": "Premier League",
+      "country": "England",
+      "tier": 1,
+      "sources": {
+        "football_data": 2021,
+        "understat": "EPL",
+        "sofascore": 17
+      },
+      "seasons_to_collect": ["2021", "2022", "2023", "2024"]
+    },
+    {
+      "name": "Serie A",
+      "country": "Italy",
+      "tier": 1,
+      "sources": {
+        "football_data": 2019,
+        "understat": "Serie_A",
+        "sofascore": 23
+      },
+      "seasons_to_collect": ["2021", "2022", "2023", "2024"]
+    },
+    {
+      "name": "La Liga",
+      "country": "Spain",
+      "tier": 1,
+      "sources": {
+        "football_data": 2014,
+        "understat": "La_liga",
+        "sofascore": 8
+      },
+      "seasons_to_collect": ["2021", "2022", "2023", "2024"]
+    }
+  ]
+}

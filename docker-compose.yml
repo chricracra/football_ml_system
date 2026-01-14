@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  ml-pipeline:
+    build: .
+    container_name: football_ml
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    environment:
+      - FOOTBALL_DATA_API_KEY=${FOOTBALL_DATA_API_KEY}
+    restart: unless-stopped
+    
+  database:
+    image: postgres:15
+    container_name: football_ml_db
+    environment:
+      POSTGRES_DB: soccer_data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/database/backups:/backups
+    ports:
+      - "5432:5432"
+    
+  monitoring:
+    image: grafana/grafana:latest
+    container_name: football_ml_monitoring
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+
+volumes:
+  postgres_data:
+  grafana_data:
